@@ -3,19 +3,25 @@ package com.ainikuzs;
 import android.accessibilityservice.AccessibilityService;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.app.KeyguardManager;
+import android.app.KeyguardManager.KeyguardLock;
 import android.app.Notification;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
+import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityManager;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Toast;
 
+import java.util.Calendar;
 import java.util.List;
 
 /**
@@ -28,7 +34,16 @@ import java.util.List;
 public class EnvelopeService extends AccessibilityService {
 
 	static final String TAG = "keliserver";
-
+	// 锁屏、解锁相关
+	private boolean enableKeyguard = true;// 默认有屏幕锁
+	private KeyguardManager km;
+	@SuppressWarnings("deprecation")
+	private KeyguardLock kl;
+	// 唤醒屏幕相关
+	private PowerManager pm;
+	private PowerManager.WakeLock wl = null;
+	// 播放提示声音
+	private MediaPlayer player;
 	/**
 	 * 微信的包名
 	 */
@@ -36,7 +51,7 @@ public class EnvelopeService extends AccessibilityService {
 	/**
 	 * 红包消息的关键字
 	 */
-	static final String ENVELOPE_TEXT_KEY = "[微信红包]";
+	static final String ENVELOPE_TEXT_KEY = "红包";
 
 	Handler handler = new Handler();
 
@@ -135,7 +150,7 @@ public class EnvelopeService extends AccessibilityService {
 		Log.i("demo", "查找打开按钮...");
 		AccessibilityNodeInfo targetNode = null;
 		// 如果红包已经被抢完则直接返回
-		targetNode = findNodeInfosByText(nodeInfo, "看看大家的手气");
+		targetNode = findNodeInfosByText(nodeInfo, "開");
 		// 通过组件名查找开红包按钮，还可通过组件id直接查找但需要知道id且id容易随版本更新而变化，旧版微信还可直接搜“開”字找到按钮
 		if (targetNode == null) {
 			Log.i("demo", "打开按钮中...");
@@ -150,6 +165,8 @@ public class EnvelopeService extends AccessibilityService {
 		// 若查找到打开按钮则模拟点击
 		if (targetNode != null) {
 			final AccessibilityNodeInfo n = targetNode;
+			// 播放提示音
+			playSound(this);
 			performClick(n);
 		}
 	}
@@ -228,6 +245,52 @@ public class EnvelopeService extends AccessibilityService {
 					break;
 				}
 			}
+		}
+	}
+
+	// 唤醒屏幕和解锁
+	@SuppressWarnings("deprecation")
+	private void wakeAndUnlock(boolean unLock) {
+		if (unLock) {
+			// 若为黑屏状态则唤醒屏幕
+			if (!pm.isScreenOn()) {
+				// 获取电源管理器对象，ACQUIRE_CAUSES_WAKEUP这个参数能从黑屏唤醒屏幕
+				wl = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK
+						| PowerManager.ACQUIRE_CAUSES_WAKEUP, "bright");
+				// 点亮屏幕
+				wl.acquire();
+				Log.i("demo", "亮屏");
+			}
+			// 若在锁屏界面则解锁直接跳过锁屏
+			if (km.inKeyguardRestrictedInputMode()) {
+				// 设置解锁标志，以判断抢完红包能否锁屏
+				enableKeyguard = false;
+				// 解锁
+				kl.disableKeyguard();
+				Log.i("demo", "解锁");
+			}
+		} else {
+			// 如果之前解过锁则加锁以恢复原样
+			if (!enableKeyguard) {
+				// 锁屏
+				kl.reenableKeyguard();
+				Log.i("demo", "加锁");
+			}
+			// 若之前唤醒过屏幕则释放之使屏幕不保持常亮
+			if (wl != null) {
+				wl.release();
+				wl = null;
+				Log.i("demo", "关灯");
+			}
+		}
+	}
+
+	public void playSound(Context context) {
+		Calendar cal = Calendar.getInstance();
+		int hour = cal.get(Calendar.HOUR_OF_DAY);
+		// 夜间不播放提示音
+		if (hour > 7 && hour < 22) {
+			player.start();
 		}
 	}
 }
