@@ -43,6 +43,7 @@ public final class R {
         /** 
         Base application theme, dependent on API level. This theme is replaced
         by AppBaseTheme from res/values-vXX/styles.xml on newer devices.
+
     
  Application theme. 
  All customizations that are NOT specific to a particular API-level can go here. 
