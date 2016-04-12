@@ -1,5 +1,6 @@
 package com.ainikuzs;
 
+import android.R.string;
 import android.accessibilityservice.AccessibilityService;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
@@ -60,7 +61,7 @@ public class EnvelopeService extends AccessibilityService {
 		final int eventType = event.getEventType();
 
 		Log.d(TAG, "事件---->" + event);
-
+		Log.d("runtimeing", "事件---->" + event);
 		// 通知栏事件
 		if (eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) {
 			List<CharSequence> texts = event.getText();
@@ -73,7 +74,10 @@ public class EnvelopeService extends AccessibilityService {
 					}
 				}
 			}
-		} else if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+			
+		} else if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || eventType==AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+			//窗口的状态或内容改变的时候
+			Log.d("runtimeing2", "事件---->" + event);
 			openEnvelope(event);
 		}
 	}
@@ -127,48 +131,24 @@ public class EnvelopeService extends AccessibilityService {
 		}
 	}
 
+	//窗口改变后判断是不是微信的界面
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
 	private void openEnvelope(AccessibilityEvent event) {
-
-		if ("com.tencent.mm.plugin.luckymoney.ui.LuckyMoneyReceiveUI"
-				.equals(event.getClassName())) {
+		CharSequence str=event.getClassName();
+		if ("com.tencent.mm.plugin.luckymoney.ui.LuckyMoneyReceiveUI".equals(str)) {
 			// 点中了红包，下一步就是去拆红包
-			checkKey1();
-		} else if ("com.tencent.mm.plugin.luckymoney.ui.LuckyMoneyDetailUI"
-				.equals(event.getClassName())) {
+			chaihongbao();
+		} else if ("com.tencent.mm.plugin.luckymoney.ui.LuckyMoneyDetailUI".equals(str)) {
 			// 拆完红包后看详细的纪录界面
 			// nonething
-		} else if ("com.tencent.mm.ui.LauncherUI".equals(event.getClassName())) {
+		} else if ("com.tencent.mm.ui.LauncherUI".equals(str)) {
 			// 在聊天界面,去点中红包
-			checkKey2();
+			clickhongbao();
+		}else{
+			//查看最后打开的红包
+			checkhongbao();
 		}
-
-		AccessibilityNodeInfo nodeInfo = getRootInActiveWindow();
-		if (nodeInfo == null) {
-			return;
-		}
-		Log.i("demo", "查找打开按钮...");
-		AccessibilityNodeInfo targetNode = null;
-		// 如果红包已经被抢完则直接返回
-		targetNode = findNodeInfosByText(nodeInfo, "開");
-		// 通过组件名查找开红包按钮，还可通过组件id直接查找但需要知道id且id容易随版本更新而变化，旧版微信还可直接搜“開”字找到按钮
-		if (targetNode == null) {
-			Log.i("demo", "打开按钮中...");
-			for (int i = 0; i < nodeInfo.getChildCount(); i++) {
-				AccessibilityNodeInfo node = nodeInfo.getChild(i);
-				if ("android.widget.Button".equals(node.getClassName())) {
-					targetNode = node;
-					break;
-				}
-			}
-		}
-		// 若查找到打开按钮则模拟点击
-		if (targetNode != null) {
-			final AccessibilityNodeInfo n = targetNode;
-			// 播放提示音
-			playSound(this);
-			performClick(n);
-		}
+		
 	}
 
 	// 通过文本查找节点
@@ -205,8 +185,40 @@ public class EnvelopeService extends AccessibilityService {
 		service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
 	}
 
+	//查看最后打开的红包
+	@SuppressLint("NewApi")
+	private void checkhongbao(){
+		AccessibilityNodeInfo nodeInfo = getRootInActiveWindow();
+		if (nodeInfo == null) {
+			return;
+		}
+		Log.i("demo", "查找打开按钮...");
+		AccessibilityNodeInfo targetNode = null;
+		// 如果红包已经被抢完则直接返回
+		targetNode = findNodeInfosByText(nodeInfo, "開");
+		// 通过组件名查找开红包按钮，还可通过组件id直接查找但需要知道id且id容易随版本更新而变化，旧版微信还可直接搜“開”字找到按钮
+		if (targetNode == null) {
+			Log.i("demo", "打开按钮中...");
+			for (int i = 0; i < nodeInfo.getChildCount(); i++) {
+				AccessibilityNodeInfo node = nodeInfo.getChild(i);
+				if ("android.widget.Button".equals(node.getClassName())) {
+					targetNode = node;
+					break;
+				}
+			}
+		}
+		// 若查找到打开按钮则模拟点击
+		if (targetNode != null) {
+			final AccessibilityNodeInfo n = targetNode;
+			// 播放提示音
+			playSound(this);
+			performClick(n);
+		}
+	}
+	
+	//拆红包
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
-	private void checkKey1() {
+	private void chaihongbao() {
 		AccessibilityNodeInfo nodeInfo = getRootInActiveWindow();
 		if (nodeInfo == null) {
 			Log.w(TAG, "rootWindow为空");
@@ -219,8 +231,9 @@ public class EnvelopeService extends AccessibilityService {
 		}
 	}
 
+	//点击红包
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
-	private void checkKey2() {
+	private void clickhongbao() {
 		AccessibilityNodeInfo nodeInfo = getRootInActiveWindow();
 		if (nodeInfo == null) {
 			Log.w(TAG, "rootWindow为空");
