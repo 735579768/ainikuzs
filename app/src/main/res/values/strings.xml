@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">爱你酷辅助</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="accessibility_description">辅助</string>
+
+</resources>
