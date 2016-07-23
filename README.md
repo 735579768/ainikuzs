@@ -1,2 +1,0 @@
-# ainikuzs
-ainikuzs
